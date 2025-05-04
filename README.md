@@ -1,3 +1,9 @@
+This is a fork of [Thumbhash](https://github.com/evanw/thumbhash) with a couple of modifications:
+1. Adds Swift Package Manager support
+2. Supports Swift on Server by using SwiftGD
+
+--
+
 # ThumbHash
 
  A very compact representation of a placeholder for an image. Store it inline with your data and show it while the real image is loading for a smoother loading experience. It's similar to [BlurHash](https://github.com/woltapp/blurhash) but with the following advantages:

@@ -1,4 +1,5 @@
 import Foundation
+import SwiftGD
 
 // NOTE: Swift has an exponential-time type checker and compiling very simple
 // expressions can easily take many seconds, especially when expressions involve
@@ -647,3 +648,119 @@ public func thumbHashToImage(hash: Data) -> UIImage {
   return UIImage(cgImage: image!)
 }
 #endif
+
+/// Creates a thumbhash from raw image data.
+/// - Parameters:
+///   - imageData: The raw image data (RGBA format)
+///   - width: The width of the image
+///   - height: The height of the image
+/// - Returns: A thumbhash as Data
+/// - Throws: An error if the image data is invalid or processing fails
+public func createThumbHash(from imageData: Data, width: Int, height: Int) throws -> Data {
+    // Validate input dimensions
+    guard width > 0 && height > 0 else {
+        throw ThumbHashError.invalidDimensions
+    }
+    
+    // Validate data size
+    let expectedSize = width * height * 4
+    guard imageData.count == expectedSize else {
+        throw ThumbHashError.invalidDataSize(expected: expectedSize, actual: imageData.count)
+    }
+    
+    return rgbaToThumbHash(w: width, h: height, rgba: imageData)
+}
+
+/// Errors that can occur during thumbhash creation
+public enum ThumbHashError: LocalizedError {
+    /// The image dimensions are invalid
+    case invalidDimensions
+    /// The image data size doesn't match the expected size
+    case invalidDataSize(expected: Int, actual: Int)
+    
+    public var errorDescription: String? {
+        switch self {
+        case .invalidDimensions:
+            return "The image dimensions are invalid"
+        case .invalidDataSize(let expected, let actual):
+            return "The image data size (\(actual)) doesn't match the expected size (\(expected))"
+        }
+    }
+}
+
+/// Creates a thumbhash from raw image data of any size
+/// - Parameters:
+///   - imageData: The raw RGBA image data
+///   - maxDimension: The maximum dimension (width or height) for the resized image (default: 100)
+///   - pathExtension: The path extension for the temporary file (default: "png")
+/// - Returns: A thumbhash as Data
+/// - Throws: An error if the image data is invalid or processing fails
+public func createThumbHashFromImageData(_ imageData: Data, maxDimension: Int = 100, pathExtension: String = "png") throws -> Data {
+    // Create a temporary file to load the image
+    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(pathExtension)
+    do {
+        try imageData.write(to: tempURL)
+    } catch {
+        throw ThumbHashError.invalidDataSize(expected: imageData.count, actual: imageData.count)
+    }
+    defer { try? FileManager.default.removeItem(at: tempURL) }
+    
+    // Load the image using SwiftGD
+    guard let image = Image(url: tempURL) else {
+        throw ThumbHashError.invalidDataSize(expected: imageData.count, actual: imageData.count)
+    }
+    
+    let originalWidth = image.size.width
+    let originalHeight = image.size.height
+    
+    // Validate dimensions
+    guard originalWidth > 0 && originalHeight > 0 else {
+        throw ThumbHashError.invalidDimensions
+    }
+    
+    // Calculate the target dimensions while maintaining aspect ratio
+    let aspectRatio = Double(originalWidth) / Double(originalHeight)
+    let targetWidth: Int
+    let targetHeight: Int
+    
+    if originalWidth > originalHeight {
+        targetWidth = min(originalWidth, maxDimension)
+        targetHeight = Int(Double(targetWidth) / aspectRatio)
+    } else {
+        targetHeight = min(originalHeight, maxDimension)
+        targetWidth = Int(Double(targetHeight) * aspectRatio)
+    }
+    
+    // Resize the image if needed
+    let resizedImage: Image
+    if targetWidth != originalWidth || targetHeight != originalHeight {
+        guard let resized = image.resizedTo(width: targetWidth, height: targetHeight) else {
+            throw ThumbHashError.invalidDimensions
+        }
+        resizedImage = resized
+    } else {
+        resizedImage = image
+    }
+    
+    // Create RGBA data from the image
+    let bytesPerRow = targetWidth * 4
+    let bufferSize = bytesPerRow * targetHeight
+    var rgbaData = Data(count: bufferSize)
+    
+    rgbaData.withUnsafeMutableBytes { (buffer: UnsafeMutableRawBufferPointer) in
+        var offset = 0
+        for y in 0..<targetHeight {
+            for x in 0..<targetWidth {
+                let color = resizedImage.get(pixel: Point(x: x, y: y))
+                buffer[offset] = UInt8(color.redComponent * 255)
+                buffer[offset + 1] = UInt8(color.greenComponent * 255)
+                buffer[offset + 2] = UInt8(color.blueComponent * 255)
+                buffer[offset + 3] = UInt8(color.alphaComponent * 255)
+                offset += 4
+            }
+        }
+    }
+    
+    // Create and return the thumbhash
+    return rgbaToThumbHash(w: targetWidth, h: targetHeight, rgba: rgbaData)
+}

@@ -3,3 +3,4 @@ xcuserdata/
 node_modules/
 .swiftpm/xcode/
 .build/
+.vscode/

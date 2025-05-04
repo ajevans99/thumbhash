@@ -11,9 +11,13 @@ let package = Package(
             targets: ["Thumbhash"]
         ),
     ],
+    dependencies: [
+        .package(url: "https://github.com/twostraws/SwiftGD.git", from: "2.0.0")
+    ],
     targets: [
         .target(
             name: "Thumbhash",
+            dependencies: ["SwiftGD"],
             path: "swift"
         ),
     ]
