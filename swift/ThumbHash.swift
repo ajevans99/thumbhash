@@ -456,7 +456,7 @@ func thumbHashToApproximateAspectRatio(hash: Data) -> Float32 {
 #if os(macOS)
 import Cocoa
 
-func imageToThumbHash(image: NSImage) -> Data {
+public func imageToThumbHash(image: NSImage) -> Data {
   let size = image.size
   let fw = round(100 * size.width / max(size.width, size.height))
   let fh = round(100 * size.height / max(size.width, size.height))
@@ -505,7 +505,7 @@ func imageToThumbHash(image: NSImage) -> Data {
   return rgbaToThumbHash(w: w, h: h, rgba: rgba)
 }
 
-func thumbHashToImage(hash: Data) -> NSImage {
+public func thumbHashToImage(hash: Data) -> NSImage {
   let (w, h, rgba) = thumbHashToRGBA(hash: hash)
   let bitmap = NSBitmapImageRep(
     bitmapDataPlanes: nil,
@@ -558,7 +558,7 @@ func thumbHashToImage(hash: Data) -> NSImage {
 #if os(iOS)
 import UIKit
 
-func imageToThumbHash(image: UIImage) -> Data {
+public func imageToThumbHash(image: UIImage) -> Data {
   let size = image.size
   let w = Int(round(100 * size.width / max(size.width, size.height)))
   let h = Int(round(100 * size.height / max(size.width, size.height)))
@@ -607,7 +607,7 @@ func imageToThumbHash(image: UIImage) -> Data {
   return rgbaToThumbHash(w: w, h: h, rgba: rgba)
 }
 
-func thumbHashToImage(hash: Data) -> UIImage {
+public func thumbHashToImage(hash: Data) -> UIImage {
   var (w, h, rgba) = thumbHashToRGBA(hash: hash)
   rgba.withUnsafeMutableBytes { rgba in
     // Convert from unpremultiplied alpha to premultiplied alpha
